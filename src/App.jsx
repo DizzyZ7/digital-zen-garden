@@ -3,7 +3,6 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Stars, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 
-// Компонент одной ветки
 const Branch = ({ position, rotation, length, depth, color }) => {
   if (depth <= 0) {
     return (
@@ -14,6 +13,7 @@ const Branch = ({ position, rotation, length, depth, color }) => {
     )
   }
 
+  // Вычисляем конечную точку ветки
   const end = new THREE.Vector3(0, length, 0)
     .applyEuler(new THREE.Euler(...rotation))
     .add(position)
@@ -22,24 +22,26 @@ const Branch = ({ position, rotation, length, depth, color }) => {
 
   return (
     <group>
-      <mesh position={position.clone().lerp(end, 0.5)}>
-        <quaternion attach="quaternion" setFromUnitVectors={
-          new THREE.Vector3(0, 1, 0), 
-          end.clone().sub(position).normalize()
-        } />
+      <mesh 
+        position={position.clone().lerp(end, 0.5)} 
+        // Метод lookAt разворачивает цилиндр вдоль вектора ветки
+        onUpdate={(self) => self.lookAt(end)}
+      >
+        {/* Поворачиваем геометрию, так как цилиндр в Three.js изначально стоит вертикально */}
         <cylinderGeometry args={[thickness * 0.7, thickness, length, 6]} />
         <meshStandardMaterial color="#2d1b0d" />
       </mesh>
+      
       <Branch 
         position={end} 
-        rotation={[rotation[0] + 0.5, rotation[1] + 2.5, rotation[2]]}
+        rotation={[rotation[0] + 0.4, rotation[1] + 2.4, rotation[2]]}
         length={length * 0.7}
         depth={depth - 1}
         color={color}
       />
       <Branch 
         position={end} 
-        rotation={[rotation[0] + 0.5, rotation[1] - 2.5, rotation[2]]}
+        rotation={[rotation[0] + 0.5, rotation[1] - 2.1, rotation[2]]}
         length={length * 0.7}
         depth={depth - 1}
         color={color}
@@ -51,7 +53,6 @@ const Branch = ({ position, rotation, length, depth, color }) => {
 export default function App() {
   const [text, setText] = useState('Zen')
 
-  // Простой алгоритм цвета из строки
   const treeColor = useMemo(() => {
     let hash = 0
     for (let i = 0; i < text.length; i++) {
@@ -62,28 +63,34 @@ export default function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
-      {/* UI слой */}
       <div style={{ position: 'absolute', top: 30, width: '100%', textAlign: 'center', zIndex: 10 }}>
         <input 
           type="text" 
           onChange={(e) => setText(e.target.value || 'Zen')}
           placeholder="Enter name..."
           style={{ 
-            padding: '10px 20px', borderRadius: '25px', border: '1px solid #555',
-            background: 'rgba(0,0,0,0.5)', color: 'white', textAlign: 'center', outline: 'none'
+            padding: '10px 20px', borderRadius: '25px', border: '1px solid #444',
+            background: 'rgba(0,0,0,0.8)', color: 'white', textAlign: 'center', outline: 'none',
+            fontSize: '16px'
           }}
         />
       </div>
 
-      <Canvas camera={{ position: [0, 5, 10], fov: 50 }}>
+      <Canvas camera={{ position: [0, 5, 12], fov: 45 }}>
         <color attach="background" args={['#000']} />
-        <ambientLight intensity={0.5} />
-        <pointLight position={[10, 10, 10]} intensity={1.5} />
+        <ambientLight intensity={0.7} />
+        <pointLight position={[10, 10, 10]} intensity={2} />
         <Stars radius={100} depth={50} count={5000} factor={4} fade speed={1} />
         
         <Suspense fallback={null}>
           <group position={[0, -2, 0]}>
-            <Branch position={new THREE.Vector3(0, 0, 0)} rotation={[0, 0, 0]} length={1.5} depth={5} color={treeColor} />
+            <Branch 
+              position={new THREE.Vector3(0, 0, 0)} 
+              rotation={[0, 0, 0]} 
+              length={1.8} 
+              depth={5} 
+              color={treeColor} 
+            />
             <ContactShadows opacity={0.4} scale={15} blur={2.5} far={10} />
           </group>
         </Suspense>
