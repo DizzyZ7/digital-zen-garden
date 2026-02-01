@@ -3,52 +3,38 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, ContactShadows, Environment, Float } from '@react-three/drei'
 import * as THREE from 'three'
 
-const Branch = ({ position, rotation, length, depth, color }) => {
+const Branch = ({ length, depth, color, isRoot = false }) => {
   if (depth <= 0) {
     return (
-      <mesh position={position}>
+      <mesh position={[0, length, 0]}>
         <sphereGeometry args={[0.25, 16, 16]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} roughness={0.3} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
       </mesh>
     )
   }
 
-  // Вычисляем конечную точку ветки
-  const end = new THREE.Vector3(0, length, 0)
-    .applyEuler(new THREE.Euler(...rotation))
-    .add(position)
-
   const thickness = 0.05 * depth
+  // Углы наклона для разветвления
+  const angleA = 0.45
+  const angleB = -0.45
 
   return (
     <group>
-      <mesh 
-        position={position.clone().lerp(end, 0.5)} 
-        onUpdate={(self) => {
-          self.lookAt(end)
-          self.rotateX(Math.PI / 2) // Корректируем ориентацию цилиндра
-        }}
-      >
-        <cylinderGeometry args={[thickness * 0.7, thickness, length, 10]} />
-        <meshStandardMaterial color="#4a3728" roughness={0.8} />
+      {/* Сама ветка: смещаем цилиндр так, чтобы его низ был в точке 0,0,0 группы */}
+      <mesh position={[0, length / 2, 0]}>
+        <cylinderGeometry args={[thickness * 0.7, thickness, length, 8]} />
+        <meshStandardMaterial color="#3d2b1f" roughness={0.8} />
       </mesh>
-      
-      {/* Левая ветка */}
-      <Branch 
-        position={end} 
-        rotation={[rotation[0] + 0.4, rotation[1] + 2.1, rotation[2]]}
-        length={length * 0.75}
-        depth={depth - 1}
-        color={color}
-      />
-      {/* Правая ветка */}
-      <Branch 
-        position={end} 
-        rotation={[rotation[0] + 0.5, rotation[1] - 1.8, rotation[2] + 0.3]}
-        length={length * 0.75}
-        depth={depth - 1}
-        color={color}
-      />
+
+      {/* Переходим к следующему уровню рекурсии от конца текущей ветки */}
+      <group position={[0, length, 0]}>
+        <group rotation={[angleA, 0, 0.2]}>
+          <Branch length={length * 0.75} depth={depth - 1} color={color} />
+        </group>
+        <group rotation={[angleB, 2.2, -0.2]}>
+          <Branch length={length * 0.75} depth={depth - 1} color={color} />
+        </group>
+      </group>
     </group>
   )
 }
@@ -61,49 +47,42 @@ export default function App() {
     for (let i = 0; i < text.length; i++) {
       hash = text.charCodeAt(i) + ((hash << 5) - hash)
     }
-    // Делаем цвета более пастельными и яркими для светлой темы
-    return `hsl(${Math.abs(hash) % 360}, 70%, 60%)`
+    return `hsl(${Math.abs(hash) % 360}, 65%, 60%)`
   }, [text])
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#f0f0f0', position: 'relative' }}>
-      {/* Чистый UI */}
+    <div style={{ width: '100vw', height: '100vh', background: '#f0f4f8', position: 'relative' }}>
       <div style={{ position: 'absolute', top: 40, width: '100%', textAlign: 'center', zIndex: 10 }}>
         <input 
           type="text" 
           onChange={(e) => setText(e.target.value || 'dizZy')}
-          placeholder="Who are you?"
+          placeholder="Enter name..."
           style={{ 
             padding: '12px 25px', borderRadius: '30px', border: 'none',
             background: 'white', color: '#333', textAlign: 'center', 
-            outline: 'none', fontSize: '18px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
-            letterSpacing: '1px'
+            outline: 'none', fontSize: '18px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
           }}
         />
       </div>
 
-      <Canvas camera={{ position: [0, 5, 12], fov: 45 }} shadows>
-        {/* Светлый фон с легким туманом */}
-        <color attach="background" args={['#e8eff5']} />
-        <fog attach="fog" args={['#e8eff5', 10, 30]} />
+      <Canvas camera={{ position: [0, 6, 12], fov: 45 }}>
+        <color attach="background" args={['#f0f4f8']} />
+        <fog attach="fog" args={['#f0f4f8', 10, 35]} />
         
-        <ambientLight intensity={1.5} />
-        <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={2} castShadow />
-        <pointLight position={[-10, -10, -10]} intensity={1} color="#white" />
-        
-        {/* Окружение для красивых бликов */}
-        <Environment preset="park" />
+        <ambientLight intensity={1} />
+        <pointLight position={[10, 10, 10]} intensity={1.5} />
+        <Environment preset="apartment" />
 
         <Suspense fallback={null}>
-          <Float speed={1.5} rotationIntensity={0.1} floatIntensity={0.4}>
-            <group position={[0, -2, 0]}>
-              <Branch position={new THREE.Vector3(0, 0, 0)} rotation={[0, 0, 0]} length={1.8} depth={5} color={treeColor} />
-              <ContactShadows opacity={0.2} scale={20} blur={2.5} far={10} color="#000" />
+          <Float speed={1} rotationIntensity={0.2} floatIntensity={0.3}>
+            <group position={[0, -2.5, 0]}>
+              <Branch length={2} depth={5} color={treeColor} isRoot={true} />
+              <ContactShadows opacity={0.2} scale={15} blur={2} far={10} />
             </group>
           </Float>
         </Suspense>
 
-        <OrbitControls makeDefault enableDamping minPolarAngle={Math.PI / 6} maxPolarAngle={Math.PI / 2} />
+        <OrbitControls makeDefault minPolarAngle={Math.PI / 6} maxPolarAngle={Math.PI / 2} />
       </Canvas>
     </div>
   )
