@@ -1,38 +1,53 @@
-import React, { useState, useMemo, Suspense } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, ContactShadows, Environment, Float } from '@react-three/drei'
+import React, { useState, useMemo, Suspense, useRef } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { OrbitControls, ContactShadows, Environment, Float, Sparkles } from '@react-three/drei'
 import * as THREE from 'three'
 
-const Branch = ({ length, depth, color, isRoot = false }) => {
+const Branch = ({ length, depth, color, index = 0 }) => {
+  const groupRef = useRef()
+
+  // Анимация ветра: каждая ветка качается со своим смещением
+  useFrame((state) => {
+    if (groupRef.current) {
+      const t = state.clock.getElapsedTime()
+      groupRef.current.rotation.x = Math.sin(t + index) * (0.02 * (6 - depth))
+      groupRef.current.rotation.z = Math.cos(t + index * 0.5) * (0.01 * (6 - depth))
+    }
+  })
+
   if (depth <= 0) {
     return (
       <mesh position={[0, length, 0]}>
-        <sphereGeometry args={[0.25, 16, 16]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
+        <sphereGeometry args={[0.28, 16, 16]} />
+        <meshStandardMaterial 
+          color={color} 
+          emissive={color} 
+          emissiveIntensity={0.6} 
+          toneMapped={false}
+        />
       </mesh>
     )
   }
 
-  const thickness = 0.05 * depth
-  // Углы наклона для разветвления
-  const angleA = 0.45
-  const angleB = -0.45
+  const thickness = 0.06 * depth
 
   return (
-    <group>
-      {/* Сама ветка: смещаем цилиндр так, чтобы его низ был в точке 0,0,0 группы */}
+    <group ref={groupRef}>
       <mesh position={[0, length / 2, 0]}>
-        <cylinderGeometry args={[thickness * 0.7, thickness, length, 8]} />
-        <meshStandardMaterial color="#3d2b1f" roughness={0.8} />
+        <cylinderGeometry args={[thickness * 0.65, thickness, length, 10]} />
+        <meshStandardMaterial color="#2b1d12" roughness={0.9} />
       </mesh>
 
-      {/* Переходим к следующему уровню рекурсии от конца текущей ветки */}
       <group position={[0, length, 0]}>
-        <group rotation={[angleA, 0, 0.2]}>
-          <Branch length={length * 0.75} depth={depth - 1} color={color} />
+        {/* Три ветки вместо двух для объема */}
+        <group rotation={[0.5, 0, 0.1]}>
+          <Branch length={length * 0.72} depth={depth - 1} color={color} index={index + 1} />
         </group>
-        <group rotation={[angleB, 2.2, -0.2]}>
-          <Branch length={length * 0.75} depth={depth - 1} color={color} />
+        <group rotation={[-0.2, 2.1, 0.4]}>
+          <Branch length={length * 0.7} depth={depth - 1} color={color} index={index + 2} />
+        </group>
+        <group rotation={[-0.3, -2.1, -0.4]}>
+          <Branch length={length * 0.65} depth={depth - 1} color={color} index={index + 3} />
         </group>
       </group>
     </group>
@@ -47,42 +62,53 @@ export default function App() {
     for (let i = 0; i < text.length; i++) {
       hash = text.charCodeAt(i) + ((hash << 5) - hash)
     }
-    return `hsl(${Math.abs(hash) % 360}, 65%, 60%)`
+    return `hsl(${Math.abs(hash) % 360}, 75%, 65%)`
   }, [text])
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#f0f4f8', position: 'relative' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#eef2f5', position: 'relative' }}>
       <div style={{ position: 'absolute', top: 40, width: '100%', textAlign: 'center', zIndex: 10 }}>
         <input 
           type="text" 
           onChange={(e) => setText(e.target.value || 'dizZy')}
-          placeholder="Enter name..."
+          placeholder="Garden ID..."
           style={{ 
             padding: '12px 25px', borderRadius: '30px', border: 'none',
             background: 'white', color: '#333', textAlign: 'center', 
-            outline: 'none', fontSize: '18px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+            outline: 'none', fontSize: '18px', boxShadow: '0 10px 40px rgba(0,0,0,0.08)',
+            fontFamily: 'monospace', letterSpacing: '2px'
           }}
         />
       </div>
 
-      <Canvas camera={{ position: [0, 6, 12], fov: 45 }}>
-        <color attach="background" args={['#f0f4f8']} />
-        <fog attach="fog" args={['#f0f4f8', 10, 35]} />
+      <Canvas camera={{ position: [0, 6, 14], fov: 40 }} dpr={[1, 2]}>
+        <color attach="background" args={['#f4f7f9']} />
+        <fog attach="fog" args={['#f4f7f9', 12, 30]} />
         
-        <ambientLight intensity={1} />
-        <pointLight position={[10, 10, 10]} intensity={1.5} />
-        <Environment preset="apartment" />
+        <ambientLight intensity={0.8} />
+        <pointLight position={[10, 10, 10]} intensity={2} />
+        <Environment preset="forest" />
 
         <Suspense fallback={null}>
-          <Float speed={1} rotationIntensity={0.2} floatIntensity={0.3}>
-            <group position={[0, -2.5, 0]}>
-              <Branch length={2} depth={5} color={treeColor} isRoot={true} />
-              <ContactShadows opacity={0.2} scale={15} blur={2} far={10} />
+          <Float speed={0.8} rotationIntensity={0.1} floatIntensity={0.2}>
+            <group position={[0, -3, 0]}>
+              <Branch length={2.2} depth={5} color={treeColor} />
+              
+              {/* Светлячки вокруг дерева */}
+              <Sparkles count={40} scale={6} size={2} speed={0.4} color={treeColor} />
+              
+              <ContactShadows opacity={0.15} scale={20} blur={3} far={10} />
+              
+              {/* Платформа (Дзен-камень) */}
+              <mesh position={[0, -0.1, 0]}>
+                <cylinderGeometry args={[1.5, 1.7, 0.2, 32]} />
+                <meshStandardMaterial color="#ddd" roughness={0.5} />
+              </mesh>
             </group>
           </Float>
         </Suspense>
 
-        <OrbitControls makeDefault minPolarAngle={Math.PI / 6} maxPolarAngle={Math.PI / 2} />
+        <OrbitControls makeDefault autoRotate autoRotateSpeed={0.3} minPolarAngle={Math.PI / 4} maxPolarAngle={Math.PI / 2.1} />
       </Canvas>
     </div>
   )
