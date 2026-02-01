@@ -1,9 +1,9 @@
-import React, { useState, Suspense, useMemo } from 'react'
+import React, { useState, useMemo, Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, ContactShadows, Stars } from '@react-three/drei'
+import { OrbitControls, Stars, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 
-// Вспомогательный компонент ветки (теперь внутри App.jsx)
+// Компонент одной ветки
 const Branch = ({ position, rotation, length, depth, color }) => {
   if (depth <= 0) {
     return (
@@ -32,14 +32,14 @@ const Branch = ({ position, rotation, length, depth, color }) => {
       </mesh>
       <Branch 
         position={end} 
-        rotation={[rotation[0] + 0.5, rotation[1] + 2.4, rotation[2]]}
+        rotation={[rotation[0] + 0.5, rotation[1] + 2.5, rotation[2]]}
         length={length * 0.7}
         depth={depth - 1}
         color={color}
       />
       <Branch 
         position={end} 
-        rotation={[rotation[0] + 0.5, rotation[1] - 2.4, rotation[2]]}
+        rotation={[rotation[0] + 0.5, rotation[1] - 2.5, rotation[2]]}
         length={length * 0.7}
         depth={depth - 1}
         color={color}
@@ -49,41 +49,46 @@ const Branch = ({ position, rotation, length, depth, color }) => {
 }
 
 export default function App() {
-  const [name, setName] = useState('Zen')
-  
-  // Простая генерация цвета из строки без библиотеки md5
-  const color = useMemo(() => {
+  const [text, setText] = useState('Zen')
+
+  // Простой алгоритм цвета из строки
+  const treeColor = useMemo(() => {
     let hash = 0
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash)
+    for (let i = 0; i < text.length; i++) {
+      hash = text.charCodeAt(i) + ((hash << 5) - hash)
     }
-    return `hsl(${Math.abs(hash) % 360}, 60%, 70%)`
-  }, [name])
+    return `hsl(${Math.abs(hash) % 360}, 50%, 70%)`
+  }, [text])
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 20, width: '100%', textAlign: 'center', zIndex: 10 }}>
+      {/* UI слой */}
+      <div style={{ position: 'absolute', top: 30, width: '100%', textAlign: 'center', zIndex: 10 }}>
         <input 
-          onChange={(e) => setName(e.target.value || 'Zen')}
-          placeholder="Type here..."
-          style={{ padding: '10px', borderRadius: '20px', border: '1px solid white', background: 'none', color: 'white', textAlign: 'center' }}
+          type="text" 
+          onChange={(e) => setText(e.target.value || 'Zen')}
+          placeholder="Enter name..."
+          style={{ 
+            padding: '10px 20px', borderRadius: '25px', border: '1px solid #555',
+            background: 'rgba(0,0,0,0.5)', color: 'white', textAlign: 'center', outline: 'none'
+          }}
         />
       </div>
 
       <Canvas camera={{ position: [0, 5, 10], fov: 50 }}>
         <color attach="background" args={['#000']} />
-        <Stars radius={100} depth={50} count={5000} factor={4} />
         <ambientLight intensity={0.5} />
-        <pointLight position={[10, 10, 10]} intensity={1} />
+        <pointLight position={[10, 10, 10]} intensity={1.5} />
+        <Stars radius={100} depth={50} count={5000} factor={4} fade speed={1} />
         
         <Suspense fallback={null}>
           <group position={[0, -2, 0]}>
-            <Branch position={new THREE.Vector3(0, 0, 0)} rotation={[0, 0, 0]} length={1.5} depth={5} color={color} />
-            <ContactShadows opacity={0.5} scale={10} blur={2} far={4.5} />
+            <Branch position={new THREE.Vector3(0, 0, 0)} rotation={[0, 0, 0]} length={1.5} depth={5} color={treeColor} />
+            <ContactShadows opacity={0.4} scale={15} blur={2.5} far={10} />
           </group>
         </Suspense>
 
-        <OrbitControls makeDefault />
+        <OrbitControls makeDefault autoRotate autoRotateSpeed={0.5} />
       </Canvas>
     </div>
   )
